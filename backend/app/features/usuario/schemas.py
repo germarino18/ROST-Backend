@@ -25,5 +25,12 @@ class AdminUserRead(BaseModel):
     roles: List[str] = []
 
 
+class AdminUserCreate(BaseModel):
+    email: str
+    nombre: str
+    password: str
+    roles: List[str] = []
+
+
 class AdminRolAsignar(BaseModel):
     rol_codigo: str

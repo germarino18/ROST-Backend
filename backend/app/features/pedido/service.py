@@ -7,16 +7,15 @@ from typing import List, Optional
 from fastapi import HTTPException, status
 from app.core.uow import UnitOfWork
 from app.features.pedido.models import Pedido
-from app.features.pedido.schemas import PedidoCreate, PedidoUpdateEstado
+from app.features.pedido.schemas import PedidoCreate, PedidoAccion
 from app.features.pedido.repository import PedidoRepository
 
-TRANSICIONES_VALIDAS = {
-    "PENDIENTE": ["EN_PREP", "CANCELADO"],
-    "CONFIRMADO": ["EN_PREP", "CANCELADO"],  # legacy: pedidos existentes
-    "EN_PREP": ["ENTREGADO"],
-    "EN_CAMINO": ["ENTREGADO"],  # legacy: pedidos existentes
-    "ENTREGADO": [],
-    "CANCELADO": [],
+ACCIONES = {
+    "CONFIRMAR": {"origen": ["PENDIENTE"],               "destino": "CONFIRMADO", "roles": ["ADMIN", "PEDIDOS", "CAJERO"]},
+    "PREPARAR":  {"origen": ["CONFIRMADO", "EN_CAMINO"],  "destino": "EN_PREP",   "roles": ["ADMIN", "COCINERO"]},
+    "LISTO":     {"origen": ["EN_PREP"],                   "destino": "LISTO",     "roles": ["ADMIN", "COCINERO"]},
+    "ENTREGAR":  {"origen": ["LISTO"],                     "destino": "ENTREGADO", "roles": ["ADMIN", "PEDIDOS", "CAJERO"]},
+    "CANCELAR":  {"origen": ["PENDIENTE", "CONFIRMADO"],   "destino": "CANCELADO", "roles": ["ADMIN", "PEDIDOS", "CAJERO"]},
 }
 
 
@@ -95,20 +94,41 @@ class PedidoService:
         self.uow.commit()
         return pedido
 
-    def avanzar_estado(
-        self, pedido_id: int, nuevo_estado: str, usuario_id: int
+    def ejecutar_accion(
+        self, pedido_id: int, accion: str, usuario_id: int, roles_usuario: list[str]
     ) -> Pedido:
+        """Ejecuta una acción validando estado actual + roles del usuario.
+        Si el usuario tiene rol ADMIN, salta toda validación de roles."""
+        if accion not in ACCIONES:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Acción '{accion}' no válida",
+            )
+
+        accion_info = ACCIONES[accion]
         session = self.uow.session
+
         pedido = self.repo.get_by_id(session, pedido_id)
         if not pedido:
             raise HTTPException(status_code=404, detail="Pedido no encontrado")
 
-        if nuevo_estado not in TRANSICIONES_VALIDAS.get(pedido.estado_actual, []):
+        # Validar estado origen
+        if pedido.estado_actual not in accion_info["origen"]:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"No se puede pasar de {pedido.estado_actual} a {nuevo_estado}",
+                detail=f"No se puede ejecutar '{accion}' en estado {pedido.estado_actual}",
             )
 
+        # Validar roles (ADMIN siempre puede)
+        if "ADMIN" not in roles_usuario:
+            tiene_rol = any(r in roles_usuario for r in accion_info["roles"])
+            if not tiene_rol:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"No tenés permisos para ejecutar '{accion}'",
+                )
+
+        nuevo_estado = accion_info["destino"]
         pedido.estado_actual = nuevo_estado
         session.add(pedido)
 
@@ -119,30 +139,4 @@ class PedidoService:
         self.uow.commit()
         return pedido
 
-    def cancelar_pedido(self, pedido_id: int, usuario_id: int) -> Pedido:
-        session = self.uow.session
-        pedido = self.repo.get_by_id(session, pedido_id)
-        if not pedido:
-            raise HTTPException(status_code=404, detail="Pedido no encontrado")
 
-        if pedido.usuario_id != usuario_id:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="No puedes cancelar un pedido que no te pertenece",
-            )
-
-        if pedido.estado_actual not in ("PENDIENTE", "CONFIRMADO"):  # CONFIRMADO legacy
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"No se puede cancelar un pedido en estado {pedido.estado_actual}",
-            )
-
-        pedido.estado_actual = "CANCELADO"
-        session.add(pedido)
-
-        self.repo.create_historial(session, pedido_id, "CANCELADO", usuario_id)
-
-        session.flush()
-        session.refresh(pedido)
-        self.uow.commit()
-        return pedido

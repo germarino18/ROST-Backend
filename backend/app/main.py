@@ -16,6 +16,7 @@ from app.features.pedido.router import router as pedido_router
 from app.features.direccion.router import router as direccion_router
 from app.features.forma_pago.router import router as forma_pago_router
 from app.features.unidad_medida.router import router as unidad_medida_router
+from app.features.estadisticas.router import router as estadisticas_router
 
 app = FastAPI(title="ROST V2 - API")
 
@@ -36,6 +37,7 @@ app.include_router(pedido_router)
 app.include_router(direccion_router)
 app.include_router(forma_pago_router)
 app.include_router(unidad_medida_router)
+app.include_router(estadisticas_router)
 
 
 @app.on_event("startup")

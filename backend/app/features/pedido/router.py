@@ -13,7 +13,7 @@ from app.core.uow import UnitOfWork
 from app.core.dependencies import get_current_user, require_role
 from app.features.auth.models import Usuario
 from app.features.usuario.usuario_rol import UsuarioRol
-from app.features.pedido.schemas import PedidoCreate, PedidoRead, PedidoUpdateEstado
+from app.features.pedido.schemas import PedidoCreate, PedidoRead, PedidoAccion
 from app.features.pedido.service import PedidoService
 from app.features.pedido.repository import PedidoRepository
 
@@ -33,12 +33,13 @@ def listar_pedidos(
     session: Session = Depends(get_session),
 ):
     """GET /api/v1/pedidos - Lista pedidos.
-    CLIENT: solo sus pedidos. ADMIN/PEDIDOS: todos los pedidos."""
+    CLIENT: solo sus pedidos. ADMIN/PEDIDOS/CAJERO/COCINERO: todos los pedidos."""
     user_roles = session.exec(
         select(UsuarioRol).where(UsuarioRol.usuario_id == current_user.id)
     ).all()
     role_codes = [ur.rol_codigo for ur in user_roles]
-    if "ADMIN" in role_codes or "PEDIDOS" in role_codes:
+    admin_roles = {"ADMIN", "PEDIDOS", "CAJERO", "COCINERO"}
+    if admin_roles & set(role_codes):
         return service.get_all()
     return service.get_all(usuario_id=current_user.id)
 
@@ -51,13 +52,14 @@ def obtener_pedido(
     session: Session = Depends(get_session),
 ):
     """GET /api/v1/pedidos/{id} - Obtiene pedido por ID.
-    CLIENT: solo si es suyo. ADMIN/PEDIDOS: cualquier pedido."""
+    CLIENT: solo si es suyo. ADMIN/PEDIDOS/CAJERO/COCINERO: cualquier pedido."""
     pedido = service.get_by_id(id)
     user_roles = session.exec(
         select(UsuarioRol).where(UsuarioRol.usuario_id == current_user.id)
     ).all()
     role_codes = [ur.rol_codigo for ur in user_roles]
-    if "ADMIN" not in role_codes and "PEDIDOS" not in role_codes:
+    admin_roles = {"ADMIN", "PEDIDOS", "CAJERO", "COCINERO"}
+    if not (admin_roles & set(role_codes)):
         if pedido.usuario_id != current_user.id:
             from fastapi import HTTPException
             raise HTTPException(status_code=403, detail="No tienes acceso a este pedido")
@@ -76,17 +78,22 @@ def crear_pedido(
     return service.create(data, current_user.id)
 
 
-@router.patch("/{id}/estado", response_model=PedidoRead)
-def cambiar_estado(
+@router.patch("/{id}/accion", response_model=PedidoRead)
+def ejecutar_accion(
     id: int,
-    data: PedidoUpdateEstado,
+    data: PedidoAccion,
     current_user: Usuario = Depends(get_current_user),
     service: PedidoService = Depends(get_service),
-    _=Depends(require_role(["ADMIN", "PEDIDOS"])),
+    session: Session = Depends(get_session),
 ):
-    """PATCH /api/v1/pedidos/{id}/estado - Avanza el estado del pedido.
-    Requiere: ADMIN o PEDIDOS. Sigue la máquina de estados definida."""
-    return service.avanzar_estado(id, data.nuevo_estado, current_user.id)
+    """PATCH /api/v1/pedidos/{id}/accion - Ejecuta una acción sobre el pedido.
+    Valida estado actual + roles según ACCIONES definidas.
+    Acciones: CONFIRMAR, PREPARAR, LISTO, ENTREGAR, CANCELAR."""
+    user_roles = session.exec(
+        select(UsuarioRol).where(UsuarioRol.usuario_id == current_user.id)
+    ).all()
+    role_codes = [ur.rol_codigo for ur in user_roles]
+    return service.ejecutar_accion(id, data.accion, current_user.id, role_codes)
 
 
 @router.patch("/{id}/cancelar", response_model=PedidoRead)
@@ -94,7 +101,12 @@ def cancelar_pedido(
     id: int,
     current_user: Usuario = Depends(get_current_user),
     service: PedidoService = Depends(get_service),
+    session: Session = Depends(get_session),
 ):
-    """PATCH /api/v1/pedidos/{id}/cancelar - Cancela un pedido.
-    Solo el dueño puede cancelar, y solo si está PENDIENTE o CONFIRMADO."""
-    return service.cancelar_pedido(id, current_user.id)
+    """PATCH /api/v1/pedidos/{id}/cancelar - Cancela un pedido (atajo).
+    Delega en la acción CANCELAR."""
+    user_roles = session.exec(
+        select(UsuarioRol).where(UsuarioRol.usuario_id == current_user.id)
+    ).all()
+    role_codes = [ur.rol_codigo for ur in user_roles]
+    return service.ejecutar_accion(id, "CANCELAR", current_user.id, role_codes)

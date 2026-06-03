@@ -20,8 +20,8 @@ class PedidoCreate(BaseModel):
     forma_pago_id: Optional[int] = None
 
 
-class PedidoUpdateEstado(BaseModel):
-    nuevo_estado: str
+class PedidoAccion(BaseModel):
+    accion: str
 
 
 class DetallePedidoRead(BaseModel):

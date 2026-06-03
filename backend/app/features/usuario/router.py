@@ -11,7 +11,7 @@ from sqlmodel import Session
 from app.db.database import get_session
 from app.core.uow import UnitOfWork
 from app.core.dependencies import require_admin
-from app.features.usuario.schemas import AdminUserRead, AdminUserUpdate, AdminRolAsignar
+from app.features.usuario.schemas import AdminUserCreate, AdminUserRead, AdminUserUpdate, AdminRolAsignar
 from app.features.usuario.service import AdminService
 from app.features.usuario.repository import UsuarioRepository
 
@@ -47,6 +47,17 @@ def listar_usuarios(
     Requiere: rol ADMIN.
     Query params: rol (filtrar por código de rol), skip, limit."""
     return service.listar_usuarios(rol=rol, skip=skip, limit=limit)
+
+
+@router.post("/usuarios", response_model=AdminUserRead, status_code=status.HTTP_201_CREATED)
+def crear_usuario(
+    data: AdminUserCreate,
+    service: AdminService = Depends(get_service),
+    _=Depends(require_admin),
+):
+    """POST /api/v1/admin/usuarios - Crea un usuario con roles específicos.
+    Requiere: ADMIN. No asigna CLIENT automáticamente."""
+    return service.crear_usuario(data)
 
 
 @router.patch("/usuarios/{id}", response_model=AdminUserRead)

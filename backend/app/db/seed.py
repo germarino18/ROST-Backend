@@ -199,18 +199,23 @@ def _seed_productos(session: Session):
 
 
 def _seed_roles(session: Session):
-    """Crea los roles del sistema: ADMIN, STOCK, PEDIDOS, CLIENT."""
-    if session.exec(select(Rol).limit(1)).first():
-        return
+    """Crea los roles del sistema si no existen (upsert individual)."""
     roles_data = [
         ("ADMIN", "Administrador"),
         ("STOCK", "Gestor de Stock"),
         ("PEDIDOS", "Gestor de Pedidos"),
+        ("CAJERO", "Cajero"),
+        ("COCINERO", "Cocinero"),
         ("CLIENT", "Cliente"),
     ]
+    added = 0
     for codigo, descripcion in roles_data:
-        session.add(Rol(codigo=codigo, descripcion=descripcion))
-    session.flush()
+        existing = session.exec(select(Rol).where(Rol.codigo == codigo)).first()
+        if not existing:
+            session.add(Rol(codigo=codigo, descripcion=descripcion))
+            added += 1
+    if added:
+        session.flush()
 
 
 def _seed_formas_pago(session: Session):
@@ -226,7 +231,7 @@ def _seed_estados_pedido(session: Session):
     """Crea los estados de pedido: PENDIENTE, CONFIRMADO, EN_PREP, EN_CAMINO, ENTREGADO, CANCELADO."""
     if session.exec(select(EstadoPedido).limit(1)).first():
         return
-    for codigo in ["PENDIENTE", "CONFIRMADO", "EN_PREP", "EN_CAMINO", "ENTREGADO", "CANCELADO"]:
+    for codigo in ["PENDIENTE", "CONFIRMADO", "EN_PREP", "LISTO", "ENTREGADO", "CANCELADO"]:
         session.add(EstadoPedido(codigo=codigo))
     session.flush()
 

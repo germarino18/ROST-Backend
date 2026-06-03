@@ -3,10 +3,12 @@
 # NO contiene consultas ORM directas — delega en UsuarioRepository.
 
 from typing import List, Optional
-from fastapi import HTTPException
+from fastapi import HTTPException, status
+from sqlmodel import select
 from app.core.uow import UnitOfWork
+from app.core.security import hash_password
 from app.features.auth.models import Usuario
-from app.features.usuario.schemas import AdminUserRead, AdminUserUpdate, AdminRolAsignar
+from app.features.usuario.schemas import AdminUserCreate, AdminUserRead, AdminUserUpdate, AdminRolAsignar
 from app.features.usuario.repository import UsuarioRepository
 
 
@@ -57,6 +59,51 @@ class AdminService:
             self.uow.commit()
 
         user_roles = self.repo.get_roles_by_user_id(session, user.id)
+        return AdminUserRead(
+            id=user.id,
+            email=user.email,
+            nombre=user.nombre,
+            activo=user.activo,
+            created_at=user.created_at,
+            roles=[ur.rol_codigo for ur in user_roles],
+        )
+
+    def crear_usuario(self, data: AdminUserCreate) -> AdminUserRead:
+        """Crea un usuario con roles específicos (solo ADMIN).
+        NO asigna CLIENT automáticamente — el ADMIN decide qué roles dar."""
+        session = self.uow.session
+
+        existing = session.exec(
+            select(Usuario).where(Usuario.email == data.email)
+        ).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="El email ya está registrado",
+            )
+
+        user = Usuario(
+            email=data.email,
+            nombre=data.nombre,
+            password_hash=hash_password(data.password),
+        )
+        session.add(user)
+        session.flush()
+
+        for rol_codigo in data.roles:
+            rol = self.repo.get_rol_by_codigo(session, rol_codigo)
+            if not rol:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"El rol '{rol_codigo}' no existe en el sistema",
+                )
+            self.repo.assign_role(session, user.id, rol_codigo)
+
+        session.flush()
+        session.refresh(user)
+
+        user_roles = self.repo.get_roles_by_user_id(session, user.id)
+        self.uow.commit()
         return AdminUserRead(
             id=user.id,
             email=user.email,
