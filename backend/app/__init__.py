@@ -4,7 +4,6 @@
 
 from app.features.auth.models import Usuario
 from app.features.usuario.rol import Rol
-from app.features.usuario.usuario_rol import UsuarioRol
 from app.features.categoria.models import Categoria
 from app.features.ingrediente.models import Ingrediente
 from app.features.producto.models import Producto, ProductoCategoria, ProductoIngrediente

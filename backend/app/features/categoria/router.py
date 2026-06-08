@@ -46,7 +46,7 @@ def obtener_categoria(id: int, service: CategoriaService = Depends(get_service))
 def crear_categoria(
     data: CategoriaCreate,
     service: CategoriaService = Depends(get_service),
-    _=Depends(require_role(["ADMIN"])),
+    _=Depends(require_role("ADMIN")),
 ):
     """POST /api/v1/categorias - Crea una nueva categoría.
     Requiere: rol ADMIN. Acepta parent_id para jerarquía."""
@@ -58,7 +58,7 @@ def actualizar_categoria(
     id: int,
     data: CategoriaUpdate,
     service: CategoriaService = Depends(get_service),
-    _=Depends(require_role(["ADMIN"])),
+    _=Depends(require_role("ADMIN")),
 ):
     """PATCH /api/v1/categorias/{id} - Actualiza parcialmente una categoría.
     Requiere: rol ADMIN."""
@@ -69,7 +69,7 @@ def actualizar_categoria(
 def eliminar_categoria(
     id: int,
     service: CategoriaService = Depends(get_service),
-    _=Depends(require_role(["ADMIN"])),
+    _=Depends(require_role("ADMIN")),
 ):
     """DELETE /api/v1/categorias/{id} - Soft delete de categoría.
     Requiere: rol ADMIN."""

@@ -45,7 +45,7 @@ def obtener_ingrediente(id: int, service: IngredienteService = Depends(get_servi
 def crear_ingrediente(
     data: IngredienteCreate,
     service: IngredienteService = Depends(get_service),
-    _=Depends(require_role(["ADMIN"])),
+    _=Depends(require_role("ADMIN")),
 ):
     """POST /api/v1/ingredientes - Crea un nuevo ingrediente.
     Requiere: rol ADMIN."""
@@ -57,7 +57,7 @@ def actualizar_ingrediente(
     id: int,
     data: IngredienteUpdate,
     service: IngredienteService = Depends(get_service),
-    _=Depends(require_role(["ADMIN"])),
+    _=Depends(require_role("ADMIN")),
 ):
     """PATCH /api/v1/ingredientes/{id} - Actualiza parcialmente un ingrediente.
     Requiere: rol ADMIN."""
@@ -68,7 +68,7 @@ def actualizar_ingrediente(
 def eliminar_ingrediente(
     id: int,
     service: IngredienteService = Depends(get_service),
-    _=Depends(require_role(["ADMIN"])),
+    _=Depends(require_role("ADMIN")),
 ):
     """DELETE /api/v1/ingredientes/{id} - Elimina un ingrediente.
     Requiere: rol ADMIN."""

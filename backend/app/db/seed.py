@@ -8,7 +8,6 @@ from sqlmodel import Session, select
 from app.core.security import hash_password
 from app.features.auth.models import Usuario
 from app.features.usuario.rol import Rol
-from app.features.usuario.usuario_rol import UsuarioRol
 from app.features.categoria.models import Categoria
 from app.features.ingrediente.models import Ingrediente
 from app.features.producto.models import Producto, ProductoCategoria, ProductoIngrediente
@@ -245,11 +244,9 @@ def _seed_admin_user(session: Session):
         nombre="Admin",
         email="admin@store.com",
         password_hash=hash_password("admin1234"),
+        rol_codigo="ADMIN",
     )
     session.add(admin)
-    session.flush()
-    admin_rol = session.exec(select(Rol).where(Rol.codigo == "ADMIN")).first()
-    session.add(UsuarioRol(usuario_id=admin.id, rol_codigo=admin_rol.codigo))
 
 
 def run_seed(session: Session):

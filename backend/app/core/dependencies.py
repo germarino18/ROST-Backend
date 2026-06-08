@@ -1,15 +1,13 @@
 # core/dependencies.py - Dependencias de FastAPI para autenticación y autorización
 # get_current_user: extrae el usuario desde la cookie "access_token" (JWT)
 # require_role: factory que retorna un dependency checker de roles
-# require_admin: atajo para require_role(["ADMIN"])
+# require_admin: atajo para require_role("ADMIN")
 
-from typing import List
 from fastapi import Depends, HTTPException, Request, status
-from sqlmodel import Session, select
+from sqlmodel import Session
 from app.db.database import get_session
 from app.core.security import decode_access_token
 from app.features.auth.models import Usuario
-from app.features.usuario.usuario_rol import UsuarioRol
 
 
 async def get_current_user(
@@ -45,25 +43,34 @@ async def get_current_user(
     return user
 
 
-def require_role(roles: List[str]):
-    """Factory que retorna un dependency checker de roles.
-    Lanza: 403 si el usuario no tiene ningún rol requerido."""
+def require_role(rol_codigo: str):
+    """Factory que retorna un dependency checker de un solo rol.
+    Lanza: 403 si el usuario no tiene el rol requerido."""
     async def role_checker(
         current_user: Usuario = Depends(get_current_user),
-        session: Session = Depends(get_session),
     ):
-        user_roles = session.exec(
-            select(UsuarioRol).where(UsuarioRol.usuario_id == current_user.id)
-        ).all()
-        user_role_codes = [ur.rol_codigo for ur in user_roles]
-        for required in roles:
-            if required in user_role_codes:
-                return current_user
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tienes permisos para esta acción",
-        )
+        if current_user.rol_codigo != rol_codigo:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tienes permisos para esta acción",
+            )
+        return current_user
     return role_checker
 
 
-require_admin = require_role(["ADMIN"])
+require_admin = require_role("ADMIN")
+
+
+def require_any_role(*roles: str):
+    """Factory que retorna un dependency checker de múltiples roles.
+    Lanza: 403 si el usuario no tiene ninguno de los roles permitidos."""
+    async def role_checker(
+        current_user: Usuario = Depends(get_current_user),
+    ):
+        if current_user.rol_codigo not in roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tienes permisos para esta acción",
+            )
+        return current_user
+    return role_checker

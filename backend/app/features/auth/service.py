@@ -10,7 +10,6 @@ from app.core.security import hash_password, verify_password, create_access_toke
 from app.features.auth.models import Usuario
 from app.features.auth.schemas import AuthRegister, AuthLogin
 from app.features.auth.repository import AuthRepository
-from app.features.usuario.usuario_rol import UsuarioRol
 from app.features.usuario.rol import Rol
 
 
@@ -45,7 +44,7 @@ class AuthService:
             select(Rol).where(Rol.codigo == "CLIENT")
         ).first()
         if cliente_rol:
-            session.add(UsuarioRol(usuario_id=user.id, rol_codigo=cliente_rol.codigo))
+            user.rol_codigo = cliente_rol.codigo
 
         session.flush()
         session.refresh(user)

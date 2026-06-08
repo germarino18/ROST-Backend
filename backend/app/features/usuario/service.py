@@ -8,7 +8,7 @@ from sqlmodel import select
 from app.core.uow import UnitOfWork
 from app.core.security import hash_password
 from app.features.auth.models import Usuario
-from app.features.usuario.schemas import AdminUserCreate, AdminUserRead, AdminUserUpdate, AdminRolAsignar
+from app.features.usuario.schemas import AdminUserCreate, AdminUserRead, AdminUserUpdate
 from app.features.usuario.repository import UsuarioRepository
 
 
@@ -33,18 +33,17 @@ class AdminService:
         users = self.repo.get_all_paginated(
             self.uow.session, rol=rol, skip=skip, limit=limit
         )
-        result = []
-        for user in users:
-            user_roles = self.repo.get_roles_by_user_id(self.uow.session, user.id)
-            result.append(AdminUserRead(
+        return [
+            AdminUserRead(
                 id=user.id,
                 email=user.email,
                 nombre=user.nombre,
                 activo=user.activo,
                 created_at=user.created_at,
-                roles=[ur.rol_codigo for ur in user_roles],
-            ))
-        return result
+                rol_codigo=user.rol_codigo,
+            )
+            for user in users
+        ]
 
     def actualizar_usuario(self, id: int, data: AdminUserUpdate) -> AdminUserRead:
         """Actualiza datos de un usuario (nombre, email, activo)."""
@@ -58,19 +57,18 @@ class AdminService:
             user = self.repo.update(session, user, **update_data)
             self.uow.commit()
 
-        user_roles = self.repo.get_roles_by_user_id(session, user.id)
         return AdminUserRead(
             id=user.id,
             email=user.email,
             nombre=user.nombre,
             activo=user.activo,
             created_at=user.created_at,
-            roles=[ur.rol_codigo for ur in user_roles],
+            rol_codigo=user.rol_codigo,
         )
 
     def crear_usuario(self, data: AdminUserCreate) -> AdminUserRead:
-        """Crea un usuario con roles específicos (solo ADMIN).
-        NO asigna CLIENT automáticamente — el ADMIN decide qué roles dar."""
+        """Crea un usuario con un rol específico (solo ADMIN).
+        NO asigna CLIENT automáticamente — el ADMIN decide qué rol dar."""
         session = self.uow.session
 
         existing = session.exec(
@@ -82,27 +80,22 @@ class AdminService:
                 detail="El email ya está registrado",
             )
 
+        rol = self.repo.get_rol_by_codigo(session, data.rol_codigo)
+        if not rol:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"El rol '{data.rol_codigo}' no existe en el sistema",
+            )
+
         user = Usuario(
             email=data.email,
             nombre=data.nombre,
             password_hash=hash_password(data.password),
+            rol_codigo=data.rol_codigo,
         )
         session.add(user)
         session.flush()
-
-        for rol_codigo in data.roles:
-            rol = self.repo.get_rol_by_codigo(session, rol_codigo)
-            if not rol:
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail=f"El rol '{rol_codigo}' no existe en el sistema",
-                )
-            self.repo.assign_role(session, user.id, rol_codigo)
-
-        session.flush()
         session.refresh(user)
-
-        user_roles = self.repo.get_roles_by_user_id(session, user.id)
         self.uow.commit()
         return AdminUserRead(
             id=user.id,
@@ -110,36 +103,5 @@ class AdminService:
             nombre=user.nombre,
             activo=user.activo,
             created_at=user.created_at,
-            roles=[ur.rol_codigo for ur in user_roles],
+            rol_codigo=user.rol_codigo,
         )
-
-    def asignar_rol(self, usuario_id: int, rol_codigo: str) -> dict:
-        """Asigna un rol a un usuario."""
-        session = self.uow.session
-        user = self.repo.get_by_id_or_404(session, usuario_id)
-        if user.deleted_at is not None:
-            raise HTTPException(status_code=404, detail="Usuario no encontrado")
-
-        rol = self.repo.get_rol_by_codigo(session, rol_codigo)
-        if not rol:
-            raise HTTPException(status_code=404, detail="Rol no encontrado")
-
-        existing = self.repo.get_user_role_by_codes(session, usuario_id, rol_codigo)
-        if not existing:
-            self.repo.assign_role(session, usuario_id, rol_codigo)
-            self.uow.commit()
-
-        return {"message": f"Rol {rol_codigo} asignado al usuario {usuario_id}"}
-
-    def remover_rol(self, usuario_id: int, rol_codigo: str) -> dict:
-        """Remueve un rol de un usuario."""
-        session = self.uow.session
-        ur = self.repo.get_user_role_by_codes(session, usuario_id, rol_codigo)
-        if not ur:
-            raise HTTPException(
-                status_code=404,
-                detail="El usuario no tiene ese rol",
-            )
-        self.repo.remove_role(session, ur)
-        self.uow.commit()
-        return {"message": f"Rol {rol_codigo} removido del usuario {usuario_id}"}

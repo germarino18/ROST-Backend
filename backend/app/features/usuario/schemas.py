@@ -1,10 +1,10 @@
 # features/usuario/schemas.py - Schemas para administración de usuarios
 # AdminUserUpdate: campos editables de usuario
-# AdminUserRead: respuesta con datos + roles
-# AdminRolAsignar: body para asignar rol
+# AdminUserRead: respuesta con datos + rol_codigo
+# AdminUserCreate: body para crear usuario con rol único
 
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
 
@@ -22,15 +22,11 @@ class AdminUserRead(BaseModel):
     nombre: str
     activo: bool
     created_at: Optional[datetime] = None
-    roles: List[str] = []
+    rol_codigo: Optional[str] = None
 
 
 class AdminUserCreate(BaseModel):
     email: str
     nombre: str
     password: str
-    roles: List[str] = []
-
-
-class AdminRolAsignar(BaseModel):
     rol_codigo: str

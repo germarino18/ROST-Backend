@@ -25,12 +25,6 @@ class RolRead(BaseModel):
     descripcion: str
 
 
-class UsuarioRolRead(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    rol_codigo: str
-    rol: Optional[RolRead] = None
-
-
 class AuthUserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
@@ -38,4 +32,4 @@ class AuthUserRead(BaseModel):
     email: str
     nombre: str
     activo: bool
-    roles: list[UsuarioRolRead] = []
+    rol: Optional[RolRead] = None

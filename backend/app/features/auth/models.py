@@ -1,13 +1,13 @@
 # features/auth/models.py - Modelo Usuario para autenticación
 # Representa a los usuarios del sistema. Incluye autenticación (email + password_hash),
-# soft delete (deleted_at), y relaciones con roles (M:N vía usuarios_roles).
+# soft delete (deleted_at), y rol único FK directa a roles.
 
 from datetime import datetime
 from sqlmodel import SQLModel, Field, Relationship, Column, DateTime, func
 from typing import TYPE_CHECKING, List, Optional
 
 if TYPE_CHECKING:
-    from app.features.usuario.usuario_rol import UsuarioRol
+    from app.features.usuario.rol import Rol
     from app.features.direccion.models import DireccionEntrega
     from app.features.pedido.models import Pedido
 
@@ -36,6 +36,7 @@ class Usuario(SQLModel, table=True):
         default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
     )
 
-    roles: List["UsuarioRol"] = Relationship(back_populates="usuario")
+    rol_codigo: Optional[str] = Field(default=None, foreign_key="roles.codigo", max_length=20)
+    rol: Optional["Rol"] = Relationship(back_populates="usuarios")
     direcciones: List["DireccionEntrega"] = Relationship(back_populates="usuario")
     pedidos: List["Pedido"] = Relationship(back_populates="usuario")

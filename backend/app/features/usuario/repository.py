@@ -6,7 +6,6 @@ from typing import List, Optional
 from sqlmodel import Session, select
 from app.core.repository import BaseRepository
 from app.features.auth.models import Usuario
-from app.features.usuario.usuario_rol import UsuarioRol
 from app.features.usuario.rol import Rol
 
 
@@ -31,39 +30,8 @@ class UsuarioRepository(BaseRepository[Usuario]):
             .limit(limit)
         )
         if rol:
-            stmt = stmt.join(UsuarioRol).join(Rol).where(Rol.codigo == rol)
+            stmt = stmt.where(Usuario.rol_codigo == rol)
         return list(session.exec(stmt).all())
-
-    def get_roles_by_user_id(self, session: Session, usuario_id: int) -> List[UsuarioRol]:
-        """Obtiene todos los roles asignados a un usuario."""
-        return list(
-            session.exec(
-                select(UsuarioRol).where(UsuarioRol.usuario_id == usuario_id)
-            ).all()
-        )
-
-    def get_user_role_by_codes(
-        self, session: Session, usuario_id: int, rol_codigo: str
-    ) -> Optional[UsuarioRol]:
-        """Obtiene un rol específico de un usuario, o None si no lo tiene."""
-        return session.exec(
-            select(UsuarioRol).where(
-                UsuarioRol.usuario_id == usuario_id,
-                UsuarioRol.rol_codigo == rol_codigo,
-            )
-        ).first()
-
-    def assign_role(self, session: Session, usuario_id: int, rol_codigo: str) -> UsuarioRol:
-        """Asigna un rol a un usuario."""
-        ur = UsuarioRol(usuario_id=usuario_id, rol_codigo=rol_codigo)
-        session.add(ur)
-        session.flush()
-        return ur
-
-    def remove_role(self, session: Session, ur: UsuarioRol) -> None:
-        """Remueve un rol de un usuario."""
-        session.delete(ur)
-        session.flush()
 
     def get_rol_by_codigo(self, session: Session, codigo: str) -> Optional[Rol]:
         """Obtiene un rol por su código."""

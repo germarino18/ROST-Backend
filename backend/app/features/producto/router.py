@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlmodel import Session
 from app.db.database import get_session
 from app.core.uow import UnitOfWork
-from app.core.dependencies import require_role
+from app.core.dependencies import require_role, require_any_role
 from app.features.producto.schemas import ProductoCreate, ProductoRead, ProductoUpdate
 from app.features.producto.service import ProductoService
 from app.features.producto.repository import ProductoRepository
@@ -47,7 +47,7 @@ def obtener_producto(id: int, service: ProductoService = Depends(get_service)):
 def crear_producto(
     data: ProductoCreate,
     service: ProductoService = Depends(get_service),
-    _=Depends(require_role(["ADMIN"])),
+    _=Depends(require_role("ADMIN")),
 ):
     """POST /api/v1/productos - Crea un nuevo producto.
     Requiere: rol ADMIN. Acepta categorías e ingredientes en el body."""
@@ -59,7 +59,7 @@ def actualizar_producto(
     id: int,
     data: ProductoUpdate,
     service: ProductoService = Depends(get_service),
-    _=Depends(require_role(["ADMIN", "STOCK"])),
+    _=Depends(require_any_role("ADMIN", "STOCK")),
 ):
     """PATCH /api/v1/productos/{id} - Actualiza parcialmente un producto.
     Requiere: ADMIN o STOCK. Reemplaza relaciones si se envían."""
@@ -70,7 +70,7 @@ def actualizar_producto(
 def eliminar_producto(
     id: int,
     service: ProductoService = Depends(get_service),
-    _=Depends(require_role(["ADMIN"])),
+    _=Depends(require_role("ADMIN")),
 ):
     """DELETE /api/v1/productos/{id} - Soft delete de producto.
     Requiere: rol ADMIN."""
@@ -82,7 +82,7 @@ def cambiar_disponibilidad(
     id: int,
     disponible: bool = Query(..., description="Nuevo estado de disponibilidad"),
     service: ProductoService = Depends(get_service),
-    _=Depends(require_role(["ADMIN", "STOCK"])),
+    _=Depends(require_any_role("ADMIN", "STOCK")),
 ):
     """PATCH /api/v1/productos/{id}/disponibilidad - Cambia disponibilidad.
     Requiere: ADMIN o STOCK. Útil para toggle rápido sin enviar todo el producto."""
