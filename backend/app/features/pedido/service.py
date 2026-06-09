@@ -38,6 +38,8 @@ class PedidoService:
         return pedido
 
     def create(self, data: PedidoCreate, usuario_id: int) -> Pedido:
+        """Versión sync — usada por el endpoint sincrónico.
+        Retorna el pedido creado SIN broadcast WS."""
         session = self.uow.session
 
         pedido = Pedido(
@@ -94,7 +96,42 @@ class PedidoService:
         self.uow.commit()
         return pedido
 
-    def ejecutar_accion(
+    async def create_and_broadcast(self, data: PedidoCreate, usuario_id: int) -> Pedido:
+        """Versión async — crea el pedido y emite broadcast WS.
+        Usada por el endpoint async."""
+        pedido = self.create(data, usuario_id)
+
+        # Broadcast a todos los roles relevantes
+        from app.features.pedido.schemas import PedidoRead
+        pedido_data = PedidoRead.model_validate(pedido).model_dump(mode="json")
+        rooms = [
+            "role:ADMIN",
+            "role:PEDIDOS",
+            "role:CAJERO",
+            "role:COCINERO",
+            f"user:{usuario_id}",
+        ]
+        from app.core import manager as ws_manager
+        event = {"type": "order_updated", "data": pedido_data}
+        await ws_manager.broadcast_to_rooms(rooms, event)
+
+        return pedido
+
+    @staticmethod
+    def _build_rooms(pedido_id: int, usuario_id: int, accion: str) -> list[str]:
+        """Construye las salas a las que broadcastear según la acción."""
+        ROLE_ROOMS = {
+            "CONFIRMAR": ["role:COCINERO", "role:ADMIN", "role:PEDIDOS", "role:CAJERO"],
+            "PREPARAR": ["role:ADMIN", "role:PEDIDOS", "role:CAJERO"],
+            "LISTO": ["role:CAJERO", "role:ADMIN", "role:PEDIDOS", "role:COCINERO"],
+            "ENTREGAR": ["role:ADMIN", "role:PEDIDOS", "role:COCINERO"],
+            "CANCELAR": ["role:ADMIN", "role:PEDIDOS", "role:COCINERO", "role:CAJERO"],
+        }
+        rooms = [f"order:{pedido_id}", f"user:{usuario_id}"]
+        rooms.extend(ROLE_ROOMS.get(accion, []))
+        return rooms
+
+    async def ejecutar_accion(
         self, pedido_id: int, accion: str, usuario_id: int, roles_usuario: list[str]
     ) -> Pedido:
         """Ejecuta una acción validando estado actual + roles del usuario.
@@ -108,7 +145,8 @@ class PedidoService:
         accion_info = ACCIONES[accion]
         session = self.uow.session
 
-        pedido = self.repo.get_by_id(session, pedido_id)
+        # Usar get_by_id_with_relations para que el pedido traiga detalles e historial
+        pedido = self.repo.get_by_id_with_relations(session, pedido_id)
         if not pedido:
             raise HTTPException(status_code=404, detail="Pedido no encontrado")
 
@@ -134,9 +172,19 @@ class PedidoService:
 
         self.repo.create_historial(session, pedido_id, nuevo_estado, usuario_id)
 
+        # Serializar datos del pedido ANTES del commit (mientras la sesión está abierta)
         session.flush()
         session.refresh(pedido)
+        from app.features.pedido.schemas import PedidoRead
+        pedido_data = PedidoRead.model_validate(pedido).model_dump(mode="json")
+        rooms = self._build_rooms(pedido_id, pedido.usuario_id, accion)
         self.uow.commit()
+
+        # Broadcast AFTER commit — los datos ya están serializados
+        from app.core import manager as ws_manager
+        event = {"type": "order_updated", "data": pedido_data}
+        await ws_manager.broadcast_to_rooms(rooms, event)
+
         return pedido
 
 

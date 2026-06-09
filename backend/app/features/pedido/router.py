@@ -55,19 +55,19 @@ def obtener_pedido(
 
 
 @router.post("", response_model=PedidoRead, status_code=status.HTTP_201_CREATED)
-def crear_pedido(
+async def crear_pedido(
     data: PedidoCreate,
     current_user: Usuario = Depends(get_current_user),
     service: PedidoService = Depends(get_service),
 ):
     """POST /api/v1/pedidos - Crea un nuevo pedido (usuario autenticado).
     Recibe: items con producto_id y cantidad, más dirección y forma de pago.
-    Descuenta stock automáticamente."""
-    return service.create(data, current_user.id)
+    Descuenta stock automáticamente y emite broadcast WebSocket."""
+    return await service.create_and_broadcast(data, current_user.id)
 
 
 @router.patch("/{id}/accion", response_model=PedidoRead)
-def ejecutar_accion(
+async def ejecutar_accion(
     id: int,
     data: PedidoAccion,
     current_user: Usuario = Depends(get_current_user),
@@ -76,15 +76,15 @@ def ejecutar_accion(
     """PATCH /api/v1/pedidos/{id}/accion - Ejecuta una acción sobre el pedido.
     Valida estado actual + roles según ACCIONES definidas.
     Acciones: CONFIRMAR, PREPARAR, LISTO, ENTREGAR, CANCELAR."""
-    return service.ejecutar_accion(id, data.accion, current_user.id, [current_user.rol_codigo])
+    return await service.ejecutar_accion(id, data.accion, current_user.id, [current_user.rol_codigo])
 
 
 @router.patch("/{id}/cancelar", response_model=PedidoRead)
-def cancelar_pedido(
+async def cancelar_pedido(
     id: int,
     current_user: Usuario = Depends(get_current_user),
     service: PedidoService = Depends(get_service),
 ):
     """PATCH /api/v1/pedidos/{id}/cancelar - Cancela un pedido (atajo).
     Delega en la acción CANCELAR."""
-    return service.ejecutar_accion(id, "CANCELAR", current_user.id, [current_user.rol_codigo])
+    return await service.ejecutar_accion(id, "CANCELAR", current_user.id, [current_user.rol_codigo])

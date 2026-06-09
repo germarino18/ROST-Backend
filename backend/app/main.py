@@ -13,6 +13,7 @@ from app.features.usuario.router import router as usuario_router
 from app.features.producto.router import router as producto_router
 from app.features.ingrediente.router import router as ingrediente_router
 from app.features.pedido.router import router as pedido_router
+from app.features.pedido.websocket import router as pedido_websocket_router
 from app.features.direccion.router import router as direccion_router
 from app.features.forma_pago.router import router as forma_pago_router
 from app.features.unidad_medida.router import router as unidad_medida_router
@@ -34,6 +35,7 @@ app.include_router(usuario_router)
 app.include_router(producto_router)
 app.include_router(ingrediente_router)
 app.include_router(pedido_router)
+app.include_router(pedido_websocket_router)
 app.include_router(direccion_router)
 app.include_router(forma_pago_router)
 app.include_router(unidad_medida_router)
