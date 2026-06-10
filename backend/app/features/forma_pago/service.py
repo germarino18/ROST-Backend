@@ -19,5 +19,4 @@ class FormaPagoService:
 
     def create(self, schema: FormaPagoCreate) -> FormaPago:
         obj = self.repo.create(self.uow.session, **schema.model_dump())
-        self.uow.commit()
         return obj

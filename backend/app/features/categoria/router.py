@@ -18,59 +18,67 @@ from app.features.categoria.repository import CategoriaRepository
 router = APIRouter(prefix="/api/v1/categorias", tags=["Categorías"])
 
 
-def get_service(session: Session = Depends(get_session)) -> CategoriaService:
-    """Inyecta CategoriaService con UnitOfWork y CategoriaRepository."""
-    uow = UnitOfWork(session)
-    repo = CategoriaRepository()
-    return CategoriaService(uow, repo)
-
-
 @router.get("", response_model=List[CategoriaRead])
 def listar_categorias(
     q: Optional[str] = Query(None, description="Buscar por nombre"),
     parent_id: Optional[int] = Query(None, description="Filtrar por categoría padre"),
-    service: CategoriaService = Depends(get_service),
+    session: Session = Depends(get_session),
 ):
     """GET /api/v1/categorias - Lista categorías activas (público).
     Filtros: q (nombre), parent_id (categoría padre)."""
-    return service.get_all(q=q, parent_id=parent_id)
+    with UnitOfWork(session) as uow:
+        repo = CategoriaRepository()
+        service = CategoriaService(uow, repo)
+        return service.get_all(q=q, parent_id=parent_id)
 
 
 @router.get("/{id}", response_model=CategoriaRead)
-def obtener_categoria(id: int, service: CategoriaService = Depends(get_service)):
+def obtener_categoria(id: int, session: Session = Depends(get_session)):
     """GET /api/v1/categorias/{id} - Obtiene categoría por ID (público)."""
-    return service.get_by_id(id)
+    with UnitOfWork(session) as uow:
+        repo = CategoriaRepository()
+        service = CategoriaService(uow, repo)
+        return service.get_by_id(id)
 
 
 @router.post("", response_model=CategoriaRead, status_code=status.HTTP_201_CREATED)
 def crear_categoria(
     data: CategoriaCreate,
-    service: CategoriaService = Depends(get_service),
+    session: Session = Depends(get_session),
     _=Depends(require_role("ADMIN")),
 ):
     """POST /api/v1/categorias - Crea una nueva categoría.
     Requiere: rol ADMIN. Acepta parent_id para jerarquía."""
-    return service.create(data)
+    with UnitOfWork(session) as uow:
+        repo = CategoriaRepository()
+        service = CategoriaService(uow, repo)
+        return service.create(data)
 
 
 @router.patch("/{id}", response_model=CategoriaRead)
 def actualizar_categoria(
     id: int,
     data: CategoriaUpdate,
-    service: CategoriaService = Depends(get_service),
+    session: Session = Depends(get_session),
     _=Depends(require_role("ADMIN")),
 ):
     """PATCH /api/v1/categorias/{id} - Actualiza parcialmente una categoría.
     Requiere: rol ADMIN."""
-    return service.update(id, data)
+    with UnitOfWork(session) as uow:
+        repo = CategoriaRepository()
+        service = CategoriaService(uow, repo)
+        return service.update(id, data)
 
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def eliminar_categoria(
     id: int,
-    service: CategoriaService = Depends(get_service),
+    session: Session = Depends(get_session),
     _=Depends(require_role("ADMIN")),
 ):
     """DELETE /api/v1/categorias/{id} - Soft delete de categoría.
     Requiere: rol ADMIN."""
-    return service.delete(id)
+    with UnitOfWork(session) as uow:
+        repo = CategoriaRepository()
+        service = CategoriaService(uow, repo)
+        return service.delete(id)

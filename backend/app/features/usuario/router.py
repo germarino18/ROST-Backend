@@ -17,21 +17,17 @@ from app.features.usuario.repository import UsuarioRepository
 router = APIRouter(prefix="/api/v1/admin", tags=["Admin"])
 
 
-def get_service(session: Session = Depends(get_session)) -> AdminService:
-    """Inyecta AdminService con UnitOfWork y UsuarioRepository."""
-    uow = UnitOfWork(session)
-    repo = UsuarioRepository()
-    return AdminService(uow, repo)
-
-
 @router.get("/roles")
 def listar_roles(
-    service: AdminService = Depends(get_service),
+    session: Session = Depends(get_session),
     _=Depends(require_admin),
 ):
     """GET /api/v1/admin/roles - Lista todos los roles del sistema.
     Requiere: rol ADMIN."""
-    return service.listar_roles()
+    with UnitOfWork(session) as uow:
+        repo = UsuarioRepository()
+        service = AdminService(uow, repo)
+        return service.listar_roles()
 
 
 @router.get("/usuarios", response_model=List[AdminUserRead])
@@ -39,33 +35,42 @@ def listar_usuarios(
     rol: Optional[str] = Query(None, description="Filtrar por rol"),
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
-    service: AdminService = Depends(get_service),
+    session: Session = Depends(get_session),
     _=Depends(require_admin),
 ):
     """GET /api/v1/admin/usuarios - Lista usuarios activos (paginado).
     Requiere: rol ADMIN.
     Query params: rol (filtrar por código de rol), skip, limit."""
-    return service.listar_usuarios(rol=rol, skip=skip, limit=limit)
+    with UnitOfWork(session) as uow:
+        repo = UsuarioRepository()
+        service = AdminService(uow, repo)
+        return service.listar_usuarios(rol=rol, skip=skip, limit=limit)
 
 
 @router.post("/usuarios", response_model=AdminUserRead, status_code=status.HTTP_201_CREATED)
 def crear_usuario(
     data: AdminUserCreate,
-    service: AdminService = Depends(get_service),
+    session: Session = Depends(get_session),
     _=Depends(require_admin),
 ):
     """POST /api/v1/admin/usuarios - Crea un usuario con rol específico.
     Requiere: ADMIN."""
-    return service.crear_usuario(data)
+    with UnitOfWork(session) as uow:
+        repo = UsuarioRepository()
+        service = AdminService(uow, repo)
+        return service.crear_usuario(data)
 
 
 @router.patch("/usuarios/{id}", response_model=AdminUserRead)
 def actualizar_usuario(
     id: int,
     data: AdminUserUpdate,
-    service: AdminService = Depends(get_service),
+    session: Session = Depends(get_session),
     _=Depends(require_admin),
 ):
     """PATCH /api/v1/admin/usuarios/{id} - Actualiza datos de un usuario.
     Requiere: rol ADMIN. Campos: nombre, email, activo."""
-    return service.actualizar_usuario(id, data)
+    with UnitOfWork(session) as uow:
+        repo = UsuarioRepository()
+        service = AdminService(uow, repo)
+        return service.actualizar_usuario(id, data)

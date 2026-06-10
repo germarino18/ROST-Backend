@@ -33,6 +33,12 @@ class UsuarioRepository(BaseRepository[Usuario]):
             stmt = stmt.where(Usuario.rol_codigo == rol)
         return list(session.exec(stmt).all())
 
+    def get_by_email(self, session: Session, email: str) -> Optional[Usuario]:
+        """Busca un usuario por su email."""
+        return session.exec(
+            select(Usuario).where(Usuario.email == email)
+        ).first()
+
     def get_rol_by_codigo(self, session: Session, codigo: str) -> Optional[Rol]:
         """Obtiene un rol por su código."""
         return session.exec(select(Rol).where(Rol.codigo == codigo)).first()

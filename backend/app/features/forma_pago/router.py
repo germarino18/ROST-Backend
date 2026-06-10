@@ -13,15 +13,12 @@ from app.features.forma_pago.repository import FormaPagoRepository
 router = APIRouter(prefix="/api/v1/formas-pago", tags=["Formas de Pago"])
 
 
-def get_service(session: Session = Depends(get_session)) -> FormaPagoService:
-    uow = UnitOfWork(session)
-    repo = FormaPagoRepository()
-    return FormaPagoService(uow, repo)
-
-
 @router.get("", response_model=List[FormaPagoRead])
 def listar_formas_pago(
-    service: FormaPagoService = Depends(get_service),
+    session: Session = Depends(get_session),
 ):
     """GET /api/v1/formas-pago - Lista formas de pago disponibles (público)."""
-    return service.get_all()
+    with UnitOfWork(session) as uow:
+        repo = FormaPagoRepository()
+        service = FormaPagoService(uow, repo)
+        return service.get_all()

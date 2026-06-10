@@ -39,7 +39,6 @@ class CategoriaService:
         session = self.uow.session
         data = schema.model_dump()
         obj = self.repo.create(session, **data)
-        self.uow.commit()
         return obj
 
     def update(self, id: int, schema: CategoriaUpdate) -> Categoria:
@@ -52,11 +51,9 @@ class CategoriaService:
             session.add(obj)
             session.flush()
             session.refresh(obj)
-        self.uow.commit()
         return obj
 
     def delete(self, id: int) -> None:
         """Soft delete: marca deleted_at en lugar de eliminar."""
         obj = self.get_by_id(id)
         self.repo.soft_delete(self.uow.session, obj)
-        self.uow.commit()

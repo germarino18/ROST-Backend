@@ -4,13 +4,12 @@
 # NO contiene consultas ORM directas — delega en AuthRepository.
 
 from fastapi import HTTPException, Response, status
-from sqlmodel import Session, select
+from sqlmodel import Session
 from app.core.uow import UnitOfWork
 from app.core.security import hash_password, verify_password, create_access_token
 from app.features.auth.models import Usuario
 from app.features.auth.schemas import AuthRegister, AuthLogin
 from app.features.auth.repository import AuthRepository
-from app.features.usuario.rol import Rol
 
 
 class AuthService:
@@ -40,15 +39,12 @@ class AuthService:
         session.add(user)
         session.flush()
 
-        cliente_rol = session.exec(
-            select(Rol).where(Rol.codigo == "CLIENT")
-        ).first()
+        cliente_rol = self.repo.get_rol_cliente(session)
         if cliente_rol:
             user.rol_codigo = cliente_rol.codigo
 
         session.flush()
         session.refresh(user)
-        self.uow.commit()
         return user
 
     def login(self, data: AuthLogin, response: Response) -> Usuario:

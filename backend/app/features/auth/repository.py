@@ -4,6 +4,7 @@
 from sqlmodel import Session, select
 from app.core.repository import BaseRepository
 from app.features.auth.models import Usuario
+from app.features.usuario.rol import Rol
 
 
 class AuthRepository(BaseRepository[Usuario]):
@@ -17,4 +18,10 @@ class AuthRepository(BaseRepository[Usuario]):
         """Busca un usuario por su email."""
         return session.exec(
             select(Usuario).where(Usuario.email == email)
+        ).first()
+
+    def get_rol_cliente(self, session: Session) -> Rol | None:
+        """Obtiene el rol CLIENT"""
+        return session.exec(
+            select(Rol).where(Rol.codigo == "CLIENT")
         ).first()

@@ -31,7 +31,6 @@ class DireccionService:
         direccion = self.repo.create(
             self.uow.session, **data.model_dump(), usuario_id=usuario_id
         )
-        self.uow.commit()
         return direccion
 
     def update(
@@ -42,13 +41,11 @@ class DireccionService:
         update_data = data.model_dump(exclude_unset=True)
         if update_data:
             direccion = self.repo.update(session, direccion, **update_data)
-        self.uow.commit()
         return direccion
 
     def delete(self, id: int, usuario_id: int) -> None:
         direccion = self.get_by_id(id, usuario_id)
         self.repo.soft_delete(self.uow.session, direccion)
-        self.uow.commit()
 
     def set_principal(self, id: int, usuario_id: int) -> DireccionEntrega:
         session = self.uow.session
@@ -58,5 +55,4 @@ class DireccionService:
         session.add(direccion)
         session.flush()
         session.refresh(direccion)
-        self.uow.commit()
         return direccion

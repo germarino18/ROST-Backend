@@ -52,7 +52,6 @@ class ProductoService:
 
         session.flush()
         session.refresh(producto)
-        self.uow.commit()
         return producto
 
     def update(self, id: int, schema: ProductoUpdate) -> Producto:
@@ -82,13 +81,11 @@ class ProductoService:
 
         session.flush()
         session.refresh(obj)
-        self.uow.commit()
         return obj
 
     def delete(self, id: int) -> None:
         obj = self.get_by_id(id)
         self.repo.soft_delete(self.uow.session, obj)
-        self.uow.commit()
 
     def cambiar_disponibilidad(self, id: int, disponible: bool) -> Producto:
         session = self.uow.session
@@ -98,5 +95,4 @@ class ProductoService:
         session.add(obj)
         session.flush()
         session.refresh(obj)
-        self.uow.commit()
         return obj

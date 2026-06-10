@@ -93,15 +93,14 @@ class PedidoService:
 
         session.flush()
         session.refresh(pedido)
-        self.uow.commit()
         return pedido
 
-    async def create_and_broadcast(self, data: PedidoCreate, usuario_id: int) -> Pedido:
-        """Versión async — crea el pedido y emite broadcast WS.
-        Usada por el endpoint async."""
+    async def create_and_broadcast(self, data: PedidoCreate, usuario_id: int) -> tuple:
+        """Versión async — crea el pedido y serializa datos para broadcast.
+        El broadcast lo ejecuta el router DESPUÉS del commit (fuera del with).
+        Retorna (pedido, pedido_data, rooms)."""
         pedido = self.create(data, usuario_id)
 
-        # Broadcast a todos los roles relevantes
         from app.features.pedido.schemas import PedidoRead
         pedido_data = PedidoRead.model_validate(pedido).model_dump(mode="json")
         rooms = [
@@ -111,11 +110,7 @@ class PedidoService:
             "role:COCINERO",
             f"user:{usuario_id}",
         ]
-        from app.core import manager as ws_manager
-        event = {"type": "order_updated", "data": pedido_data}
-        await ws_manager.broadcast_to_rooms(rooms, event)
-
-        return pedido
+        return pedido, pedido_data, rooms
 
     @staticmethod
     def _build_rooms(pedido_id: int, usuario_id: int, accion: str) -> list[str]:
@@ -133,7 +128,7 @@ class PedidoService:
 
     async def ejecutar_accion(
         self, pedido_id: int, accion: str, usuario_id: int, roles_usuario: list[str]
-    ) -> Pedido:
+    ) -> tuple:
         """Ejecuta una acción validando estado actual + roles del usuario.
         Si el usuario tiene rol ADMIN, salta toda validación de roles."""
         if accion not in ACCIONES:
@@ -157,14 +152,17 @@ class PedidoService:
                 detail=f"No se puede ejecutar '{accion}' en estado {pedido.estado_actual}",
             )
 
-        # Validar roles (ADMIN siempre puede)
+        # Validar roles (ADMIN siempre puede, y el dueño del pedido puede cancelar)
         if "ADMIN" not in roles_usuario:
-            tiene_rol = any(r in roles_usuario for r in accion_info["roles"])
-            if not tiene_rol:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"No tenés permisos para ejecutar '{accion}'",
-                )
+            # El dueño del pedido puede cancelar sin importar su rol
+            puede_por_ownership = accion == "CANCELAR" and pedido.usuario_id == usuario_id
+            if not puede_por_ownership:
+                tiene_rol = any(r in roles_usuario for r in accion_info["roles"])
+                if not tiene_rol:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail=f"No tenés permisos para ejecutar '{accion}'",
+                    )
 
         nuevo_estado = accion_info["destino"]
         pedido.estado_actual = nuevo_estado
@@ -172,19 +170,14 @@ class PedidoService:
 
         self.repo.create_historial(session, pedido_id, nuevo_estado, usuario_id)
 
-        # Serializar datos del pedido ANTES del commit (mientras la sesión está abierta)
+        # Serializar datos del pedido (la sesión sigue abierta)
         session.flush()
         session.refresh(pedido)
         from app.features.pedido.schemas import PedidoRead
         pedido_data = PedidoRead.model_validate(pedido).model_dump(mode="json")
         rooms = self._build_rooms(pedido_id, pedido.usuario_id, accion)
-        self.uow.commit()
 
-        # Broadcast AFTER commit — los datos ya están serializados
-        from app.core import manager as ws_manager
-        event = {"type": "order_updated", "data": pedido_data}
-        await ws_manager.broadcast_to_rooms(rooms, event)
-
-        return pedido
+        # Retornamos datos para que el router haga broadcast DESPUÉS del commit
+        return pedido, pedido_data, rooms
 
 

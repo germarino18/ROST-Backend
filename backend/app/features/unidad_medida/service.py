@@ -23,7 +23,6 @@ class UnidadMedidaService:
 
     def create(self, schema: UnidadMedidaCreate) -> UnidadMedida:
         obj = self.repo.create(self.uow.session, **schema.model_dump())
-        self.uow.commit()
         return obj
 
     def update(self, id: int, schema: UnidadMedidaUpdate) -> UnidadMedida:
@@ -32,10 +31,8 @@ class UnidadMedidaService:
         data = schema.model_dump(exclude_unset=True)
         if data:
             obj = self.repo.update(session, obj, **data)
-        self.uow.commit()
         return obj
 
     def delete(self, id: int) -> None:
         obj = self.repo.get_by_id_or_404(self.uow.session, id)
         self.repo.delete(self.uow.session, obj)
-        self.uow.commit()

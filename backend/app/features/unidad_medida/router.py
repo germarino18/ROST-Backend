@@ -17,48 +17,57 @@ from app.features.unidad_medida.repository import UnidadMedidaRepository
 router = APIRouter(prefix="/api/v1/unidades-medida", tags=["Unidades de Medida"])
 
 
-def get_service(session: Session = Depends(get_session)) -> UnidadMedidaService:
-    uow = UnitOfWork(session)
-    repo = UnidadMedidaRepository()
-    return UnidadMedidaService(uow, repo)
-
-
 @router.get("", response_model=List[UnidadMedidaRead])
 def listar_unidades(
     tipo: Optional[str] = Query(None, description="Filtrar por tipo"),
-    service: UnidadMedidaService = Depends(get_service),
+    session: Session = Depends(get_session),
 ):
     """GET /api/v1/unidades-medida - Lista unidades de medida (público).
     Filtro: tipo (masa, volumen, unidad, area)."""
-    return service.get_all(tipo=tipo)
+    with UnitOfWork(session) as uow:
+        repo = UnidadMedidaRepository()
+        service = UnidadMedidaService(uow, repo)
+        return service.get_all(tipo=tipo)
 
 
 @router.get("/{id}", response_model=UnidadMedidaRead)
-def obtener_unidad(id: int, service: UnidadMedidaService = Depends(get_service)):
+def obtener_unidad(id: int, session: Session = Depends(get_session)):
     """GET /api/v1/unidades-medida/{id} - Obtiene unidad por ID (público)."""
-    return service.get_by_id(id)
+    with UnitOfWork(session) as uow:
+        repo = UnidadMedidaRepository()
+        service = UnidadMedidaService(uow, repo)
+        return service.get_by_id(id)
 
 
 @router.post("", response_model=UnidadMedidaRead, status_code=status.HTTP_201_CREATED)
 def crear_unidad(
     data: UnidadMedidaCreate,
-    service: UnidadMedidaService = Depends(get_service),
+    session: Session = Depends(get_session),
 ):
     """POST /api/v1/unidades-medida - Crea una nueva unidad de medida."""
-    return service.create(data)
+    with UnitOfWork(session) as uow:
+        repo = UnidadMedidaRepository()
+        service = UnidadMedidaService(uow, repo)
+        return service.create(data)
 
 
 @router.patch("/{id}", response_model=UnidadMedidaRead)
 def actualizar_unidad(
     id: int,
     data: UnidadMedidaUpdate,
-    service: UnidadMedidaService = Depends(get_service),
+    session: Session = Depends(get_session),
 ):
     """PATCH /api/v1/unidades-medida/{id} - Actualiza parcialmente una unidad."""
-    return service.update(id, data)
+    with UnitOfWork(session) as uow:
+        repo = UnidadMedidaRepository()
+        service = UnidadMedidaService(uow, repo)
+        return service.update(id, data)
 
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def eliminar_unidad(id: int, service: UnidadMedidaService = Depends(get_service)):
+def eliminar_unidad(id: int, session: Session = Depends(get_session)):
     """DELETE /api/v1/unidades-medida/{id} - Elimina una unidad de medida."""
-    return service.delete(id)
+    with UnitOfWork(session) as uow:
+        repo = UnidadMedidaRepository()
+        service = UnidadMedidaService(uow, repo)
+        return service.delete(id)

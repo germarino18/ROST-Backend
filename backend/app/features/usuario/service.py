@@ -4,7 +4,6 @@
 
 from typing import List, Optional
 from fastapi import HTTPException, status
-from sqlmodel import select
 from app.core.uow import UnitOfWork
 from app.core.security import hash_password
 from app.features.auth.models import Usuario
@@ -55,7 +54,6 @@ class AdminService:
         update_data = data.model_dump(exclude_unset=True)
         if update_data:
             user = self.repo.update(session, user, **update_data)
-            self.uow.commit()
 
         return AdminUserRead(
             id=user.id,
@@ -71,9 +69,7 @@ class AdminService:
         NO asigna CLIENT automáticamente — el ADMIN decide qué rol dar."""
         session = self.uow.session
 
-        existing = session.exec(
-            select(Usuario).where(Usuario.email == data.email)
-        ).first()
+        existing = self.repo.get_by_email(session, data.email)
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -96,7 +92,6 @@ class AdminService:
         session.add(user)
         session.flush()
         session.refresh(user)
-        self.uow.commit()
         return AdminUserRead(
             id=user.id,
             email=user.email,

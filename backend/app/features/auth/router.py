@@ -4,7 +4,7 @@
 # GET  /api/v1/auth/me → Devuelve el usuario autenticado (requiere cookie)
 # POST /api/v1/auth/logout → Elimina la cookie JWT
 
-from fastapi import APIRouter, Depends, Request, Response, status
+from fastapi import APIRouter, Depends, Response, status
 from sqlmodel import Session
 from app.db.database import get_session
 from app.core.uow import UnitOfWork
@@ -17,17 +17,13 @@ from app.features.auth.models import Usuario
 router = APIRouter(prefix="/api/v1/auth", tags=["Auth"])
 
 
-def get_service(session: Session = Depends(get_session)) -> AuthService:
-    """Inyecta AuthService con UnitOfWork y AuthRepository."""
-    uow = UnitOfWork(session)
-    repo = AuthRepository()
-    return AuthService(uow, repo)
-
-
 @router.post("/register", response_model=AuthUserRead, status_code=status.HTTP_201_CREATED)
-def register(data: AuthRegister, service: AuthService = Depends(get_service)):
+def register(data: AuthRegister, session: Session = Depends(get_session)):
     """POST /api/v1/auth/register - Registro público de nuevo usuario."""
-    return service.register(data)
+    with UnitOfWork(session) as uow:
+        repo = AuthRepository()
+        service = AuthService(uow, repo)
+        return service.register(data)
 
 
 @router.post("/login", response_model=AuthUserRead)
@@ -37,10 +33,10 @@ def login(
     session: Session = Depends(get_session),
 ):
     """POST /api/v1/auth/login - Inicia sesión. Setea cookie httponly 'access_token'."""
-    uow = UnitOfWork(session)
-    repo = AuthRepository()
-    service = AuthService(uow, repo)
-    return service.login(data, response)
+    with UnitOfWork(session) as uow:
+        repo = AuthRepository()
+        service = AuthService(uow, repo)
+        return service.login(data, response)
 
 
 @router.get("/me", response_model=AuthUserRead)
