@@ -11,8 +11,9 @@ router = APIRouter()
 
 @router.websocket("/api/v1/pedidos/ws")
 async def pedidos_websocket(websocket: WebSocket):
+    # Acepta token de cookie (mismo origen) o query param (origen cruzado, ej: ngrok)
     cookies = websocket.cookies
-    token = cookies.get("access_token")
+    token = cookies.get("access_token") or websocket.query_params.get("token")
 
     if not token:
         await websocket.close(code=4001, reason="No autenticado")

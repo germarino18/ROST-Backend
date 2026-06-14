@@ -1,3 +1,4 @@
+import asyncio
 from fastapi import WebSocket
 from typing import Any
 import json
@@ -36,8 +37,10 @@ class ConnectionManager:
         if room not in self.active_connections:
             return
         payload = json.dumps(message, default=str)
+        # Copiamos la lista para evitar race conditions si otra tarea modifica la lista
+        connections = list(self.active_connections.get(room, []))
         disconnected = []
-        for ws in self.active_connections[room]:
+        for ws in connections:
             try:
                 await ws.send_text(payload)
             except Exception:
@@ -46,5 +49,8 @@ class ConnectionManager:
             await self.disconnect(ws)
 
     async def broadcast_to_rooms(self, rooms: list[str], message: dict[str, Any]):
+        """Dispara broadcast a todas las rooms. Fire-and-forget — no bloquea al caller.
+        Si una conexión WebSocket está lenta/stale, no ralentiza la respuesta HTTP."""
         for room in rooms:
-            await self.broadcast_to_room(room, message)
+            # Cada room se dispara en background para no bloquear la respuesta HTTP
+            asyncio.create_task(self.broadcast_to_room(room, message))

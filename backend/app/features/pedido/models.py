@@ -5,6 +5,8 @@ from decimal import Decimal
 from sqlmodel import SQLModel, Field, Relationship, Column, DateTime, func, DECIMAL, JSON, CheckConstraint
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
+from app.features.pagos.models import Pago
+
 if TYPE_CHECKING:
     from app.features.auth.models import Usuario
     from app.features.direccion.models import DireccionEntrega
@@ -51,6 +53,7 @@ class Pedido(SQLModel, table=True):
     forma_pago: "FormaPago" = Relationship()
     detalles: List["DetallePedido"] = Relationship(back_populates="pedido")
     historial: List["HistorialEstadoPedido"] = Relationship(back_populates="pedido")
+    pago: Optional["Pago"] = Relationship(back_populates="pedido")
 
 
 class DetallePedido(SQLModel, table=True):

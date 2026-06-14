@@ -39,14 +39,25 @@ class PedidoService:
 
     def create(self, data: PedidoCreate, usuario_id: int) -> Pedido:
         """Versión sync — usada por el endpoint sincrónico.
-        Retorna el pedido creado SIN broadcast WS."""
+        Retorna el pedido creado SIN broadcast WS.
+        Si la forma de pago es MercadoPago, el estado inicial es PENDIENTE_PAGO
+        para que NO aparezca en el kanban del admin hasta que se confirme el pago."""
         session = self.uow.session
+
+        # Determinar estado inicial según forma de pago
+        estado_inicial = "PENDIENTE"
+        if data.forma_pago_id:
+            fp = self.repo.get_forma_pago(session, data.forma_pago_id)
+            if fp:
+                nombre = (fp.nombre or "").upper()
+                if nombre == "MERCADOPAGO" or "MERCADO" in nombre:
+                    estado_inicial = "PENDIENTE_PAGO"
 
         pedido = Pedido(
             usuario_id=usuario_id,
             direccion_entrega_id=data.direccion_entrega_id,
             forma_pago_id=data.forma_pago_id,
-            estado_actual="PENDIENTE",
+            estado_actual=estado_inicial,
             total=0,
         )
         session.add(pedido)
@@ -88,7 +99,7 @@ class PedidoService:
         session.flush()
 
         self.repo.create_historial(
-            session, pedido.id, "PENDIENTE", usuario_id
+            session, pedido.id, estado_inicial, usuario_id
         )
 
         session.flush()

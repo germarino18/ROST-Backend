@@ -10,3 +10,6 @@ load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY", "parcial-secret-key-change-in-prod")
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_MINUTES = int(os.getenv("JWT_EXPIRATION_MINUTES", "30"))
+MP_ACCESS_TOKEN = os.getenv("MP_ACCESS_TOKEN", "")
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")

@@ -64,6 +64,11 @@ class PedidoRepository(BaseRepository[Pedido]):
         session.add(historial)
         return historial
 
+    def get_forma_pago(self, session: Session, forma_pago_id: int):
+        """Obtiene una forma de pago por ID."""
+        from app.features.forma_pago.models import FormaPago
+        return session.get(FormaPago, forma_pago_id)
+
     def update_producto_stock(
         self, session: Session, producto: Producto, cantidad: int
     ) -> None:
