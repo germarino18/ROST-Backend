@@ -94,7 +94,11 @@ class PedidoService:
             if producto.precio_base:
                 total += float(producto.precio_base) * item.cantidad
 
-        pedido.total = total
+        # Calcular subtotal, envío e IVA
+        subtotal = round(total, 2)
+        shipping_cost = 0.0 if subtotal > 8000 else 1000.0
+        iva_amount = round(subtotal * 0.21, 2)
+        pedido.total = round(subtotal + shipping_cost + iva_amount, 2)
         session.add(pedido)
         session.flush()
 

@@ -60,6 +60,7 @@ class PagoService:
                     "title": f"Pedido #{pedido_id}",
                     "quantity": 1,
                     "unit_price": float(pedido.total) if pedido.total else 0,
+                    "currency_id": "ARS",
                 }
             ],
             "external_reference": external_reference,

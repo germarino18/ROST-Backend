@@ -2,9 +2,10 @@
 # AdminUserUpdate: campos editables de usuario
 # AdminUserRead: respuesta con datos + rol_codigo
 # AdminUserCreate: body para crear usuario con rol único
+# RolRead: respuesta con datos de rol
 
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 from pydantic import BaseModel, ConfigDict
 
 
@@ -30,3 +31,11 @@ class AdminUserCreate(BaseModel):
     nombre: str
     password: str
     rol_codigo: str
+
+
+class RolRead(BaseModel):
+    """Schema de respuesta para roles. Serializa solo los campos necesarios."""
+    model_config = ConfigDict(from_attributes=True)
+
+    codigo: str
+    descripcion: str

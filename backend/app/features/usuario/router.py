@@ -10,14 +10,14 @@ from sqlmodel import Session
 from app.db.database import get_session
 from app.core.uow import UnitOfWork
 from app.core.dependencies import require_admin
-from app.features.usuario.schemas import AdminUserCreate, AdminUserRead, AdminUserUpdate
+from app.features.usuario.schemas import AdminUserCreate, AdminUserRead, AdminUserUpdate, RolRead
 from app.features.usuario.service import AdminService
 from app.features.usuario.repository import UsuarioRepository
 
 router = APIRouter(prefix="/api/v1/admin", tags=["Admin"])
 
 
-@router.get("/roles")
+@router.get("/roles", response_model=List[RolRead])
 def listar_roles(
     session: Session = Depends(get_session),
     _=Depends(require_admin),
