@@ -1,6 +1,6 @@
 from typing import Optional
 from datetime import datetime
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Column, DateTime, func
 
 
 class Image(SQLModel, table=True):
@@ -14,4 +14,7 @@ class Image(SQLModel, table=True):
     width: Optional[int] = Field(default=None)
     height: Optional[int] = Field(default=None)
     bytes: Optional[int] = Field(default=None)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: Optional[datetime] = Field(
+        default=None,
+        sa_column=Column(DateTime(timezone=True), server_default=func.now()),
+    )

@@ -7,3 +7,4 @@ bcrypt
 PyJWT
 alembic
 mercadopago>=2.3.0
+cloudinary

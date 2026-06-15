@@ -4,11 +4,14 @@
 
 from datetime import datetime, timezone
 from typing import List, Optional
+import cloudinary.uploader
 from fastapi import HTTPException
+from sqlmodel import select
 from app.core.uow import UnitOfWork
 from app.features.producto.models import Producto
 from app.features.producto.schemas import ProductoCreate, ProductoUpdate
 from app.features.producto.repository import ProductoRepository
+from app.features.images.models import Image
 
 
 class ProductoService:
@@ -57,12 +60,20 @@ class ProductoService:
     def update(self, id: int, schema: ProductoUpdate) -> Producto:
         session = self.uow.session
         obj = self.get_by_id(id)
+        old_urls = set(obj.imagenes_url or [])
 
         data = schema.model_dump(
             exclude={"categorias", "ingredientes"}, exclude_unset=True
         )
         for key, value in data.items():
             setattr(obj, key, value)
+
+        # Si se cambiaron las URLs de imágenes, limpiar las removidas
+        if "imagenes_url" in data:
+            new_urls = set(data["imagenes_url"] or [])
+            removed = old_urls - new_urls
+            if removed:
+                self._cleanup_images(list(removed))
         if (
             "stock_cantidad" in data
             and data["stock_cantidad"] is not None
@@ -83,8 +94,23 @@ class ProductoService:
         session.refresh(obj)
         return obj
 
+    def _cleanup_images(self, urls: list[str]) -> None:
+        """Elimina imágenes de Cloudinary y de la DB dada una lista de URLs."""
+        if not urls:
+            return
+        session = self.uow.session
+        for url in urls:
+            image = session.exec(select(Image).where(Image.url == url)).first()
+            if image:
+                try:
+                    cloudinary.uploader.destroy(image.public_id, resource_type="image")
+                except Exception:
+                    pass  # No bloquear si falla Cloudinary
+                session.delete(image)
+
     def delete(self, id: int) -> None:
         obj = self.get_by_id(id)
+        self._cleanup_images(obj.imagenes_url or [])
         self.repo.soft_delete(self.uow.session, obj)
 
     def cambiar_disponibilidad(self, id: int, disponible: bool) -> Producto:
