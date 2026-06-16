@@ -64,10 +64,20 @@ class AdminService:
             rol_codigo=user.rol_codigo,
         )
 
+    ROLES_PERMITIDOS_ADMIN = {"COCINERO", "PEDIDOS", "STOCK"}
+
     def crear_usuario(self, data: AdminUserCreate) -> AdminUserRead:
         """Crea un usuario con un rol específico (solo ADMIN).
-        NO asigna CLIENT automáticamente — el ADMIN decide qué rol dar."""
+        Solo puede crear usuarios con roles COCINERO, PEDIDOS o STOCK.
+        CLIENT se registra desde la store, ADMIN no puede crear otro ADMIN."""
         session = self.uow.session
+
+        if data.rol_codigo not in self.ROLES_PERMITIDOS_ADMIN:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"No puedes crear usuarios con el rol '{data.rol_codigo}'. "
+                       f"Roles permitidos: {', '.join(sorted(self.ROLES_PERMITIDOS_ADMIN))}",
+            )
 
         existing = self.repo.get_by_email(session, data.email)
         if existing:

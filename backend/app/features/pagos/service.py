@@ -160,6 +160,7 @@ class PagoService:
                     pedido.id,
                     "CONFIRMADO",
                     0,
+                    estado_desde=estado_anterior,
                 )
                 session.flush()
                 session.refresh(pedido)
@@ -231,10 +232,11 @@ class PagoService:
                 pedido_repo = PedidoRepository()
                 pedido = pedido_repo.get_by_id(session, pago.pedido_id)
                 if pedido and pedido.estado_actual != "CONFIRMADO":
+                    estado_anterior = pedido.estado_actual
                     pedido.estado_actual = "CONFIRMADO"
                     session.add(pedido)
                     session.flush()
-                    pedido_repo.create_historial(session, pedido.id, "CONFIRMADO", 0)
+                    pedido_repo.create_historial(session, pedido.id, "CONFIRMADO", 0, estado_desde=estado_anterior)
                     session.flush()
                     session.refresh(pedido)
                     # Serializar para broadcast

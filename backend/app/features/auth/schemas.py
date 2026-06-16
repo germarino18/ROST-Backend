@@ -5,18 +5,46 @@
 
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, ConfigDict
+import re
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class AuthRegister(BaseModel):
-    email: str
-    nombre: str
-    password: str
+    email: EmailStr
+    nombre: str = Field(min_length=2, max_length=80)
+    password: str = Field(min_length=8)
+
+    @field_validator("password")
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("La contraseña debe contener al menos una mayúscula")
+        if not re.search(r"\d", v):
+            raise ValueError("La contraseña debe contener al menos un número")
+        if not re.search(r"[^a-zA-Z0-9\s]", v):
+            raise ValueError("La contraseña debe contener al menos un símbolo (ej: !@#$%^&*)")
+        return v
 
 
 class AuthLogin(BaseModel):
-    email: str
+    email: EmailStr
     password: str
+
+
+class CambiarPasswordRequest(BaseModel):
+    password_actual: str
+    password_nueva: str = Field(min_length=8)
+
+    @field_validator("password_nueva")
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("La contraseña debe contener al menos una mayúscula")
+        if not re.search(r"\d", v):
+            raise ValueError("La contraseña debe contener al menos un número")
+        if not re.search(r"[^a-zA-Z0-9\s]", v):
+            raise ValueError("La contraseña debe contener al menos un símbolo (ej: !@#$%^&*)")
+        return v
 
 
 class RolRead(BaseModel):

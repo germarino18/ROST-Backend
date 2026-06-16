@@ -53,12 +53,13 @@ class PedidoRepository(BaseRepository[Pedido]):
         return detalle
 
     def create_historial(
-        self, session: Session, pedido_id: int, estado: str, cambiado_por: int
+        self, session: Session, pedido_id: int, estado_hacia: str, cambiado_por: int, estado_desde: Optional[str] = None
     ) -> HistorialEstadoPedido:
         """Registra un cambio de estado en el historial."""
         historial = HistorialEstadoPedido(
             pedido_id=pedido_id,
-            estado=estado,
+            estado_desde=estado_desde,
+            estado_hacia=estado_hacia,
             cambiado_por=cambiado_por,
         )
         session.add(historial)
@@ -75,4 +76,12 @@ class PedidoRepository(BaseRepository[Pedido]):
         """Descuenta stock de un producto."""
         if producto.stock_cantidad is not None:
             producto.stock_cantidad -= cantidad
+            session.add(producto)
+
+    def restore_producto_stock(
+        self, session: Session, producto: Producto, cantidad: int
+    ) -> None:
+        """Restaura stock de un producto (al cancelar pedido)."""
+        if producto.stock_cantidad is not None:
+            producto.stock_cantidad += cantidad
             session.add(producto)

@@ -8,7 +8,7 @@ from sqlmodel import Session
 from app.core.uow import UnitOfWork
 from app.core.security import hash_password, verify_password, create_access_token
 from app.features.auth.models import Usuario
-from app.features.auth.schemas import AuthRegister, AuthLogin
+from app.features.auth.schemas import AuthRegister, AuthLogin, CambiarPasswordRequest
 from app.features.auth.repository import AuthRepository
 
 
@@ -73,3 +73,13 @@ class AuthService:
             samesite="lax",
         )
         return user
+
+    def cambiar_password(self, user: Usuario, data: CambiarPasswordRequest) -> None:
+        """Cambia la contraseña del usuario validando la actual.
+        Lanza: 401 si la contraseña actual no coincide."""
+        if not verify_password(data.password_actual, user.password_hash):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="La contraseña actual no es correcta",
+            )
+        self.repo.update(self.uow.session, user, password_hash=hash_password(data.password_nueva))

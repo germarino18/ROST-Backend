@@ -13,7 +13,10 @@ class DireccionCreate(BaseModel):
     direccion: str
     ciudad: str
     region: str
-    codigo_postal: Optional[str] = None
+    codigo_postal: str
+    departamento: bool = False
+    piso: Optional[str] = None
+    puerta: Optional[str] = None
 
 
 class DireccionUpdate(BaseModel):
@@ -22,6 +25,9 @@ class DireccionUpdate(BaseModel):
     ciudad: Optional[str] = None
     region: Optional[str] = None
     codigo_postal: Optional[str] = None
+    departamento: Optional[bool] = None
+    piso: Optional[str] = None
+    puerta: Optional[str] = None
 
 
 class DireccionRead(BaseModel):
@@ -33,7 +39,10 @@ class DireccionRead(BaseModel):
     direccion: str
     ciudad: str
     region: str
-    codigo_postal: Optional[str] = None
+    codigo_postal: str
+    departamento: bool
+    piso: Optional[str] = None
+    puerta: Optional[str] = None
     es_principal: bool
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None

@@ -32,6 +32,7 @@ class DetallePedidoRead(BaseModel):
     cantidad: int
     precio_snapshot: Optional[Decimal] = None
     nombre_snapshot: str
+    subtotal_snap: Optional[Decimal] = None
     personalizacion: Optional[Dict[str, Any]] = None
 
 
@@ -39,7 +40,8 @@ class HistorialEstadoRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    estado: str
+    estado_desde: Optional[str] = None
+    estado_hacia: str
     cambiado_por: int
     fecha: Optional[datetime] = None
 
@@ -54,6 +56,9 @@ class PedidoRead(BaseModel):
     forma_pago_id: Optional[int] = None
     estado_actual: str
     total: Optional[Decimal] = None
+    subtotal: Optional[Decimal] = None
+    descuento: Optional[Decimal] = None
+    costo_envio: Optional[Decimal] = None
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     detalles: List[DetallePedidoRead] = []
@@ -73,6 +78,9 @@ class PedidoRead(BaseModel):
                 'forma_pago_id': data.forma_pago_id,
                 'estado_actual': data.estado_actual,
                 'total': data.total,
+                'subtotal': data.subtotal,
+                'descuento': data.descuento,
+                'costo_envio': data.costo_envio,
                 'created_at': data.created_at,
                 'updated_at': data.updated_at,
                 'detalles': list(data.detalles or []),

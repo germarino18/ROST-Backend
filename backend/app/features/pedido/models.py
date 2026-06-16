@@ -19,6 +19,7 @@ class EstadoPedido(SQLModel, table=True):
     __tablename__ = "estados_pedido"
     id: Optional[int] = Field(default=None, primary_key=True)
     codigo: str = Field(max_length=20, nullable=False, unique=True)
+    es_terminal: bool = Field(default=False, nullable=False)
 
 
 class Pedido(SQLModel, table=True):
@@ -36,6 +37,15 @@ class Pedido(SQLModel, table=True):
     estado_actual: str = Field(max_length=20, nullable=False)
     total: Optional[Decimal] = Field(
         default=None, sa_column=Column(DECIMAL(12, 2))
+    )
+    subtotal: Optional[Decimal] = Field(
+        default=None, sa_column=Column(DECIMAL(10, 2))
+    )
+    descuento: Optional[Decimal] = Field(
+        default=None, sa_column=Column(DECIMAL(10, 2))
+    )
+    costo_envio: Optional[Decimal] = Field(
+        default=None, sa_column=Column(DECIMAL(10, 2))
     )
     created_at: Optional[datetime] = Field(
         default=None,
@@ -68,6 +78,9 @@ class DetallePedido(SQLModel, table=True):
         default=None, sa_column=Column(DECIMAL(10, 2))
     )
     nombre_snapshot: str = Field(max_length=200, nullable=False)
+    subtotal_snap: Optional[Decimal] = Field(
+        default=None, sa_column=Column(DECIMAL(10, 2))
+    )
     personalizacion: Optional[Dict[str, Any]] = Field(
         default=None, sa_column=Column(JSON)
     )
@@ -86,7 +99,8 @@ class HistorialEstadoPedido(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     pedido_id: int = Field(foreign_key="pedidos.id", nullable=False)
-    estado: str = Field(max_length=20, nullable=False)
+    estado_desde: Optional[str] = Field(default=None, max_length=20, nullable=True)
+    estado_hacia: str = Field(max_length=20, nullable=False)
     cambiado_por: int = Field(nullable=False)
     fecha: Optional[datetime] = Field(
         default=None,

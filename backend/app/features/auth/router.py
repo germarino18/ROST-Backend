@@ -9,7 +9,7 @@ from sqlmodel import Session
 from app.db.database import get_session
 from app.core.uow import UnitOfWork
 from app.core.dependencies import get_current_user
-from app.features.auth.schemas import AuthRegister, AuthLogin, AuthUserRead
+from app.features.auth.schemas import AuthRegister, AuthLogin, AuthUserRead, CambiarPasswordRequest
 from app.features.auth.service import AuthService
 from app.features.auth.repository import AuthRepository
 from app.features.auth.models import Usuario
@@ -43,6 +43,20 @@ def login(
 def get_me(current_user: Usuario = Depends(get_current_user)):
     """GET /api/v1/auth/me - Devuelve el usuario autenticado."""
     return current_user
+
+
+@router.post("/cambiar-password")
+def cambiar_password(
+    data: CambiarPasswordRequest,
+    current_user: Usuario = Depends(get_current_user),
+    session: Session = Depends(get_session),
+):
+    """POST /api/v1/auth/cambiar-password - Cambia la contraseña del usuario autenticado."""
+    with UnitOfWork(session) as uow:
+        repo = AuthRepository()
+        service = AuthService(uow, repo)
+        service.cambiar_password(current_user, data)
+    return {"message": "Contraseña actualizada correctamente"}
 
 
 @router.post("/logout")

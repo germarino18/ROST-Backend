@@ -103,7 +103,7 @@ class PedidoService:
         session.flush()
 
         self.repo.create_historial(
-            session, pedido.id, estado_inicial, usuario_id
+            session, pedido.id, estado_inicial, usuario_id, estado_desde=None
         )
 
         session.flush()
@@ -180,10 +180,18 @@ class PedidoService:
                     )
 
         nuevo_estado = accion_info["destino"]
+        estado_anterior = pedido.estado_actual
         pedido.estado_actual = nuevo_estado
         session.add(pedido)
 
-        self.repo.create_historial(session, pedido_id, nuevo_estado, usuario_id)
+        self.repo.create_historial(session, pedido_id, nuevo_estado, usuario_id, estado_desde=estado_anterior)
+
+        # Si se cancela, restaurar el stock de cada producto
+        if accion == "CANCELAR":
+            for detalle in pedido.detalles:
+                producto = self.repo.get_producto(session, detalle.producto_id)
+                if producto:
+                    self.repo.restore_producto_stock(session, producto, detalle.cantidad)
 
         # Serializar datos del pedido (la sesión sigue abierta)
         session.flush()

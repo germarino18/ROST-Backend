@@ -203,7 +203,6 @@ def _seed_roles(session: Session):
         ("ADMIN", "Administrador"),
         ("STOCK", "Gestor de Stock"),
         ("PEDIDOS", "Gestor de Pedidos"),
-        ("CAJERO", "Cajero"),
         ("COCINERO", "Cocinero"),
         ("CLIENT", "Cliente"),
     ]
@@ -227,7 +226,7 @@ def _seed_formas_pago(session: Session):
 
 
 def _seed_estados_pedido(session: Session):
-    """Crea los estados de pedido: PENDIENTE, CONFIRMADO, EN_PREP, EN_CAMINO, ENTREGADO, CANCELADO."""
+    """Crea los estados de pedido: PENDIENTE, CONFIRMADO, EN_PREP, LISTO, ENTREGADO, CANCELADO."""
     if session.exec(select(EstadoPedido).limit(1)).first():
         return
     for codigo in ["PENDIENTE", "CONFIRMADO", "EN_PREP", "LISTO", "ENTREGADO", "CANCELADO"]:
@@ -236,14 +235,14 @@ def _seed_estados_pedido(session: Session):
 
 
 def _seed_admin_user(session: Session):
-    """Crea el usuario admin por defecto (admin@store.com / admin1234)
+    """Crea el usuario admin por defecto (admin@foodstore.com / Admin1234!)
     y le asigna el rol ADMIN."""
-    if session.exec(select(Usuario).where(Usuario.email == "admin@store.com")).first():
+    if session.exec(select(Usuario).where(Usuario.email == "admin@foodstore.com")).first():
         return
     admin = Usuario(
         nombre="Admin",
-        email="admin@store.com",
-        password_hash=hash_password("admin1234"),
+        email="admin@foodstore.com",
+        password_hash=hash_password("Admin1234!"),
         rol_codigo="ADMIN",
     )
     session.add(admin)

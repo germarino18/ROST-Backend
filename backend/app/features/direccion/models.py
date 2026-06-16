@@ -21,7 +21,10 @@ class DireccionEntrega(SQLModel, table=True):
     direccion: str = Field(max_length=255, nullable=False)
     ciudad: str = Field(max_length=100, nullable=False)
     region: str = Field(max_length=100, nullable=False)
-    codigo_postal: Optional[str] = Field(default=None, max_length=20)
+    codigo_postal: str = Field(max_length=20, nullable=False)
+    departamento: bool = Field(default=False)
+    piso: Optional[str] = Field(default=None, max_length=10)
+    puerta: Optional[str] = Field(default=None, max_length=10)
     es_principal: bool = Field(default=False)
     created_at: Optional[datetime] = Field(
         default=None,
