@@ -1,15 +1,20 @@
+# features/estadisticas/service.py - Servicio de estadísticas del dashboard
+# Consultas agregadas sobre tablas existentes: COUNT, SUM, GROUP BY, TOP 5.
+
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from sqlmodel import Session, select, func, text
+from sqlmodel import Session
 from app.features.estadisticas.schemas import DashboardRead, ProductoTop, StockBajo, PedidoDiario
+from app.features.estadisticas.repository import EstadisticasRepository
 
 
 class EstadisticasService:
     """Servicio que construye el dashboard con métricas agregadas del negocio."""
 
-    def __init__(self, session: Session):
+    def __init__(self, session: Session, repo: EstadisticasRepository = None):
         self.session = session
+        self.repo = repo or EstadisticasRepository()
 
     def get_dashboard(self) -> DashboardRead:
         """Compila todas las métricas del dashboard en una sola respuesta."""
@@ -18,57 +23,35 @@ class EstadisticasService:
         semana_inicio = hoy_inicio - timedelta(days=7)
 
         # Pedidos e ingresos de hoy
-        from app.features.pedido.models import Pedido
-
-        pedidos_hoy = self.session.exec(
-            select(Pedido).where(Pedido.created_at >= hoy_inicio)
-        ).all()
+        pedidos_hoy = self.repo.get_pedidos_desde(self.session, hoy_inicio)
         ingresos_hoy = sum(
             float(p.total) for p in pedidos_hoy if p.total and p.estado_actual in ("ENTREGADO", "LISTO")
         )
         # Pedidos e ingresos de la semana
-        pedidos_semana = self.session.exec(
-            select(Pedido).where(Pedido.created_at >= semana_inicio)
-        ).all()
+        pedidos_semana = self.repo.get_pedidos_desde(self.session, semana_inicio)
         ingresos_semana = sum(
             float(p.total) for p in pedidos_semana if p.total and p.estado_actual in ("ENTREGADO", "LISTO")
         )
 
         # Pedidos por estado
-        stmt_estados = select(Pedido.estado_actual, func.count(Pedido.id).label("count"))
-        stmt_estados = stmt_estados.group_by(Pedido.estado_actual)
-        rows_estados = self.session.exec(stmt_estados).all()
+        rows_estados = self.repo.get_pedidos_por_estado(self.session)
         pedidos_por_estado = {row[0]: row[1] for row in rows_estados}
 
         # Productos más vendidos (top 5)
-        from app.features.pedido.models import DetallePedido
-
-        stmt_top = select(
-            DetallePedido.nombre_snapshot,
-            func.sum(DetallePedido.cantidad).label("total_vendido"),
-        )
-        stmt_top = stmt_top.group_by(DetallePedido.nombre_snapshot)
-        stmt_top = stmt_top.order_by(text("total_vendido DESC"))
-        stmt_top = stmt_top.limit(5)
-        rows_top = self.session.exec(stmt_top).all()
+        rows_top = self.repo.get_productos_mas_vendidos(self.session, 5)
         productos_mas_vendidos = [
             ProductoTop(nombre=row[0], cantidad=int(row[1])) for row in rows_top if row[0]
         ]
 
         # Stock bajo (<= 5)
-        from app.features.producto.models import Producto
-
-        stmt_stock = select(Producto).where(Producto.stock_cantidad <= 5).where(Producto.disponible == True)
-        stock_bajo_rows = self.session.exec(stmt_stock).all()
+        stock_bajo_rows = self.repo.get_productos_stock_bajo(self.session, 5)
         stock_bajo = [
             StockBajo(nombre=p.nombre, stock=p.stock_cantidad or 0)
             for p in stock_bajo_rows
         ]
 
         # Pedidos últimos 7 días (serie temporal)
-        pedidos_7_dias = self.session.exec(
-            select(Pedido).where(Pedido.created_at >= semana_inicio)
-        ).all()
+        pedidos_7_dias = self.repo.get_pedidos_desde(self.session, semana_inicio)
         conteo_dias: dict[str, int] = defaultdict(int)
         for p in pedidos_7_dias:
             dia = p.created_at.strftime("%Y-%m-%d") if p.created_at else "sin-fecha"

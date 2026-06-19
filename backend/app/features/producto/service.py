@@ -6,12 +6,10 @@ from datetime import datetime, timezone
 from typing import List, Optional
 import cloudinary.uploader
 from fastapi import HTTPException
-from sqlmodel import select
 from app.core.uow import UnitOfWork
 from app.features.producto.models import Producto
 from app.features.producto.schemas import ProductoCreate, ProductoUpdate
 from app.features.producto.repository import ProductoRepository
-from app.features.images.models import Image
 
 
 class ProductoService:
@@ -100,7 +98,7 @@ class ProductoService:
             return
         session = self.uow.session
         for url in urls:
-            image = session.exec(select(Image).where(Image.url == url)).first()
+            image = self.uow.images.get_by_url(session, url)
             if image:
                 try:
                     cloudinary.uploader.destroy(image.public_id, resource_type="image")

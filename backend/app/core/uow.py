@@ -13,10 +13,19 @@ class UnitOfWork:
 
     def __init__(self, session: Session):
         self._session = session
+        self._images = None
 
     @property
     def session(self) -> Session:
         return self._session
+
+    @property
+    def images(self):
+        """Repositorio de imágenes (lazy initialization)."""
+        if self._images is None:
+            from app.features.images.repository import ImageRepository
+            self._images = ImageRepository()
+        return self._images
 
     def commit(self):
         """Persiste los cambios pendientes en la DB."""

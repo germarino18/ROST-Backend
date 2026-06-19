@@ -1,12 +1,16 @@
-# main.py - Punto de entrada de la aplicación FastAPI
-# Configura CORS para los frontends, registra todos los routers
-# bajo /api/v1, y en el startup inicializa la DB y ejecuta el seed.
-
-from fastapi import FastAPI, Depends
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlmodel import Session
+
+from app.core.logger import get_logger, setup_logging
+from app.core.middleware.logging_middleware import LoggingMiddleware
+from app.core.middleware.timing_middleware import TimingMiddleware
+from app.core.rate_limit.rate_limit_middleware import RateLimitMiddleware
+from app.core.exceptions.exception_handlers import register_exception_handlers
+
 from app.db.database import init_db, get_session
 from app.db.seed import run_seed
+
 from app.features.auth.router import router as auth_router
 from app.features.categoria.router import router as categoria_router
 from app.features.usuario.router import router as usuario_router
@@ -21,8 +25,32 @@ from app.features.estadisticas.router import router as estadisticas_router
 from app.features.pagos.router import router as pagos_router
 from app.features.images.router import router as images_router
 
-app = FastAPI(title="ROST V2 - API")
+setup_logging()
+logger = get_logger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("app.startup — ROST V2")
+    init_db()
+    session = next(get_session())
+    try:
+        run_seed(session)
+        logger.info("seed.completed")
+    except Exception as e:
+        logger.warning(f"seed.failed (continuamos sin seed): {e}")
+    finally:
+        session.close()
+    yield
+    logger.info("app.shutdown")
+
+
+app = FastAPI(title="ROST V2 - API", lifespan=lifespan)
+
+# ORDEN IMPORTANTE: rate limit primero, luego logging, luego timing, luego CORS
+app.add_middleware(RateLimitMiddleware)
+app.add_middleware(LoggingMiddleware)
+app.add_middleware(TimingMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://localhost:5174"],
@@ -30,6 +58,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+register_exception_handlers(app)
 
 app.include_router(auth_router)
 app.include_router(categoria_router)
@@ -46,18 +76,6 @@ app.include_router(pagos_router)
 app.include_router(images_router)
 
 
-@app.on_event("startup")
-def on_startup():
-    """Evento de inicio de FastAPI: crea tablas y ejecuta seed de datos iniciales."""
-    init_db()
-    session = next(get_session())
-    try:
-        run_seed(session)
-    finally:
-        session.close()
-
-
 @app.get("/")
 def root():
-    """GET / - Endpoint raíz de salud."""
-    return {"message": "ROST V2 - API"}
+    return {"message": "ROST V2 - API", "status": "ok"}
