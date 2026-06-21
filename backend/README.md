@@ -1,8 +1,10 @@
 # ROST Backend API
 
+LINK DEL VIDEO: https://www.youtube.com/watch?v=MrAY16nCnAo
+
 Backend de la API REST para el proyecto ROST, construido utilizando **FastAPI** y **SQLModel**. Implementa una arquitectura robusta basada en repositorios y Unit of Work (UOW) para la persistencia en base de datos.
 
-## 🚀 Requisitos de Entorno
+## Requisitos de Entorno
 
 Asegurate de tener instalado:
 - **Python 3.11+**
@@ -10,7 +12,7 @@ Asegurate de tener instalado:
 
 ---
 
-## 🛠️ Configuración y Variables de Entorno (`.env`)
+## Configuración y Variables de Entorno (`.env`)
 
 El servidor necesita variables de entorno para conectarse a la base de datos y comunicarse con servicios de terceros (Mercado Pago y Cloudinary). 
 
@@ -37,7 +39,7 @@ CLOUDINARY_API_SECRET=tu_api_secret
 
 ---
 
-## 💳 Integración con Mercado Pago
+## Integración con Mercado Pago
 
 Para procesar transacciones en la tienda, el backend interactúa con la API de Mercado Pago:
 1. **Credenciales**: Necesitás ingresar a [Mercado Pago Developers](https://www.mercadopago.com.ar/developers/) con tu cuenta.
@@ -47,7 +49,7 @@ Para procesar transacciones en la tienda, el backend interactúa con la API de M
 
 ---
 
-## ☁️ Integración con Cloudinary (Imágenes)
+## Integración con Cloudinary (Imágenes)
 
 Este proyecto requiere obligatoriamente Cloudinary para el manejo de imágenes de productos, ingredientes y categorías:
 1. **Registro**: Crea una cuenta gratuita en [Cloudinary](https://cloudinary.com/).
@@ -56,7 +58,7 @@ Este proyecto requiere obligatoriamente Cloudinary para el manejo de imágenes d
 
 ---
 
-## 💻 Inicialización del Servidor Local
+## Inicialización del Servidor Local
 
 Seguí estos sencillos pasos para levantar el backend desde cero:
 
